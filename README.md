@@ -1,13 +1,210 @@
-# Vue.js Modal Component
-## Overview
-- Example of a modal component in Vue.js
+# Bash Shell 状态流程图
 
-## Key Points
-- **CSS Classes**
-  - `modal-mask`
-  - `modal-wrapper`
-  - `modal-container`
-- **Customization**
-  - Modify CSS styles for header, body, and footer
-- **Transition Effects**
-  - Controlled by classes `modal-enter` and `modal-leave-to`
+## 1. Shell 启动和类型状态
+
+```mermaid
+flowchart TD
+    A[系统启动] --> B{是否为登录启动?}
+    B -->|是| C[登录 Shell]
+    B -->|否| D[非登录 Shell]
+    
+    C --> E{是否为交互式?}
+    D --> E
+    
+    E -->|是| F[交互式 Shell]
+    E -->|否| G[非交互式 Shell]
+    
+    F --> H[显示提示符]
+    G --> I[执行脚本/命令]
+    
+    H --> J[等待用户输入]
+    I --> K[执行完成]
+    
+    J --> L{用户输入}
+    L --> M[命令]
+    L --> N[脚本文件]
+    L --> O[内置命令]
+    L --> P[退出]
+    
+    M --> Q[执行命令]
+    N --> R[执行脚本]
+    O --> S[执行内置命令]
+    P --> T[退出 Shell]
+    
+    Q --> U{执行结果}
+    R --> U
+    S --> U
+    
+    U -->|成功| V[返回成功状态 $?=0]
+    U -->|失败| W[返回错误状态 $?≠0]
+    
+    V --> H
+    W --> H
+    K --> T
+```
+
+## 2. 作业控制状态
+
+```mermaid
+flowchart TD
+    A[命令执行] --> B{作业类型}
+    
+    B -->|前台作业| C[前台执行]
+    B -->|后台作业| D[后台执行]
+    
+    C --> E[用户可见输出]
+    D --> F[隐藏输出]
+    
+    E --> G{用户操作}
+    F --> H[继续后台运行]
+    
+    G -->|Ctrl+C| I[终止作业]
+    G -->|Ctrl+Z| J[暂停作业]
+    G -->|正常完成| K[作业完成]
+    
+    J --> L[作业暂停状态]
+    L --> M{用户操作}
+    
+    M -->|bg| N[后台继续]
+    M -->|fg| O[前台继续]
+    M -->|kill| P[终止作业]
+    
+    N --> H
+    O --> C
+    H --> Q[后台完成]
+    
+    I --> R[作业终止]
+    K --> S[返回状态码]
+    P --> R
+    Q --> S
+    R --> S
+```
+
+## 3. Shell 生命周期状态
+
+```mermaid
+flowchart TD
+    A[系统启动] --> B[初始化环境]
+    B --> C[加载配置文件]
+    
+    C --> D{配置文件类型}
+    D -->|登录 Shell| E[加载 /etc/profile]
+    D -->|交互式 Shell| F[加载 ~/.bashrc]
+    D -->|非交互式| G[跳过配置文件]
+    
+    E --> H[加载 ~/.bash_profile]
+    F --> I[设置别名和函数]
+    G --> J[直接执行命令]
+    
+    H --> I
+    I --> K[进入主循环]
+    J --> L[执行命令]
+    
+    K --> M{用户输入}
+    L --> N[执行完成]
+    
+    M --> O[解析命令]
+    O --> P[执行命令]
+    P --> Q{执行结果}
+    
+    Q -->|继续| K
+    Q -->|退出| R[清理环境]
+    
+    N --> R
+    R --> S[Shell 退出]
+```
+
+## 4. 信号处理状态
+
+```mermaid
+flowchart TD
+    A[Shell 运行] --> B{接收信号}
+    
+    B -->|SIGINT Ctrl+C| C[中断当前命令]
+    B -->|SIGTSTP Ctrl+Z| D[暂停当前作业]
+    B -->|SIGHUP| E[挂起信号]
+    B -->|SIGTERM| F[终止信号]
+    B -->|SIGQUIT Ctrl+\\| G[强制退出]
+    
+    C --> H[显示新提示符]
+    D --> I[作业进入暂停状态]
+    E --> J[保存状态并退出]
+    F --> K[优雅退出]
+    G --> L[强制终止]
+    
+    H --> M[等待新命令]
+    I --> N{用户操作}
+    
+    N -->|fg| O[恢复前台执行]
+    N -->|bg| P[恢复后台执行]
+    N -->|kill| Q[终止作业]
+    
+    O --> R[继续执行]
+    P --> S[后台运行]
+    Q --> T[作业终止]
+    
+    M --> A
+    R --> A
+    S --> U[后台完成]
+    T --> H
+    U --> H
+    J --> V[Shell 退出]
+    K --> V
+    L --> V
+```
+
+## 5. 错误处理状态
+
+```mermaid
+flowchart TD
+    A[命令执行] --> B{执行结果}
+    
+    B -->|成功| C[返回状态码 0]
+    B -->|失败| D[返回非零状态码]
+    B -->|语法错误| E[显示语法错误]
+    B -->|权限错误| F[显示权限错误]
+    B -->|文件不存在| G[显示文件错误]
+    
+    C --> H[继续执行]
+    D --> I{错误处理}
+    E --> J[显示错误信息]
+    F --> J
+    G --> J
+    
+    I -->|忽略| H
+    I -->|重试| K[重新执行]
+    I -->|退出| L[终止执行]
+    
+    J --> M{用户操作}
+    K --> A
+    
+    M -->|修正| N[重新输入]
+    M -->|忽略| H
+    M -->|退出| L
+    
+    N --> A
+    H --> O[等待下个命令]
+    L --> P[Shell 退出]
+```
+
+## 状态检查命令
+
+| 状态类型 | 检查命令 | 说明 |
+|---------|---------|------|
+| 交互式状态 | `[[ $- == *i* ]]` | 检查是否为交互式 shell |
+| 登录状态 | `shopt -q login_shell` | 检查是否为登录 shell |
+| 作业状态 | `jobs` | 显示所有作业 |
+| 退出状态 | `echo $?` | 显示上一个命令的退出状态 |
+| 进程状态 | `ps` | 显示进程状态 |
+| 信号状态 | `trap -l` | 显示信号列表 |
+
+## 状态转换命令
+
+| 操作 | 命令 | 说明 |
+|------|------|------|
+| 前台转后台 | `Ctrl+Z` + `bg` | 暂停并后台运行 |
+| 后台转前台 | `fg` | 将后台作业调到前台 |
+| 终止作业 | `kill %N` | 终止指定作业 |
+| 暂停作业 | `Ctrl+Z` | 暂停当前作业 |
+| 退出 shell | `exit` | 退出当前 shell |
+| 切换 shell | `exec bash` | 切换到 bash shell |
